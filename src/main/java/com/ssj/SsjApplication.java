@@ -19,14 +19,19 @@ public class SsjApplication {
             ServerSocket serverSocket = new ServerSocket(3333);
             //创建一个客户端对象，这里的作用是用作多线程，必经服务器服务的不是一个客户端
             Socket client = null;
+
+            Socket remoteServerSocket = new Socket("172.247.33.169", 54400);
+
             boolean flag = true;
 
             while (flag) {
                 System.out.println("服务器已启动，等待客户端请求。。。。");
                 //accept是阻塞式方法，对新手来说这里很有可能出错，下面的注意事项我会说到
                 client = serverSocket.accept();
+
+
                 //创建一个线程，每个客户端对应一个线程
-                new Thread(new EchoThread(client)).start();
+                new Thread(new EchoThread(client, remoteServerSocket)).start();
             }
             client.close();
             serverSocket.close();
@@ -41,34 +46,32 @@ public class SsjApplication {
 class EchoThread implements Runnable {
     private Socket client;
 
-    public EchoThread(Socket client) {
+    private Socket remote;
+
+    public EchoThread(Socket client, Socket remote) {
         this.client = client;
+        this.remote = remote;
 
     }
 
     public void run() {
-        //run不需要自己去执行，好像是线程器去执行了来着，可以去看api
         try {
-//            BufferedReader in = null;
             String br = null;
             boolean flag = true;
             while (flag == true) {
-                //Java流的操作没意见吧
-
                 InputStream in = client.getInputStream();
-//                byte[] data = new byte[1024];
-//                int readlen = in.read(data);
-//                if (readlen <= 0) {
-//                    Thread.sleep(300);
-//                    continue;
-//                }
-                StringWriter writer = new StringWriter();
-                IOUtils.copy(in, writer, "utf8");
-                String theString = writer.toString();
-//                in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-//                br = in.readLine();
-                System.out.println("++:" + theString);
-//                recordMsg(br);//写入到文件
+                OutputStream out = remote.getOutputStream();
+                //读入数据
+                byte[] data = new byte[1024];
+                int readlen = in.read(data);
+
+                //如果没有数据，则暂停
+                if (readlen <= 0) {
+                    Thread.sleep(300);
+                    continue;
+                }
+                out.write(data, 0, readlen);
+                out.flush();
             }
 
         } catch (IOException e1) {
